@@ -72,7 +72,7 @@ export function evaluate({
 
   // Too much in one change: hold until the parts are declared.
   const limits = map.limits ?? {};
-  const weighty = fp.areas.filter(id => !map.areas.find(a => a.id === id)?.weightless);
+  const weighty = fp.areas.filter(id => { const a = map.areas.find(x => x.id === id); return a && !a.weightless && !a.virtual; });
   const weightyFiles = changedFiles.filter(f => !fp.weightlessFiles?.includes(f));
   const tooMany = (limits.areas && weighty.length > limits.areas) || (limits.files && weightyFiles.length > limits.files);
   if (tooMany && !declaredParts.length)
@@ -85,6 +85,7 @@ export function evaluate({
     && (journeyVersions?.[journey.id] == null || item.journeyVersion === journeyVersions[journey.id])
     && (seedVersion == null || String(item.seedVersion) === String(seedVersion));
   const notRun = new Set();
+  const notRunTools = [];
   const runs = checks.journeys.map(journey => {
     const run = { journey, before: null, after: null };
     for (const [side, tree] of [['before', version.baseTree], ['after', version.headTree]]) {
@@ -124,7 +125,12 @@ export function evaluate({
     const { check, effect } = rule;
     const failures = [];
     let fired = false;
-    if (check.when === 'always') fired = check.uses ? tools[rule.id] !== 'pass' : true;
+    let toolState = null;
+    if (check.when === 'always' && check.uses) {
+      toolState = tools[rule.id] ?? 'not_run';
+      if (toolState === 'not_run') { notRunTools.push(rule.id); fired = false; }
+      else fired = toolState === 'fail';
+    } else if (check.when === 'always') fired = true;
     if (check.when === 'manual') fired = !(rule.id in answers);
     if (check.when === 'outcome_changed') fired = outcomes.some(outcome => outcome.changed && check.outcomes.includes(outcome.name) && !declaredOutcomes.has(outcome.name));
     if (check.when === 'invariant') {
@@ -154,10 +160,14 @@ export function evaluate({
     return {
       ruleId: rule.id, revision: rule.revision, title: rule.title, statement: rule.statement,
       fired, effect: !fired ? 'none' : effect.allow ? 'allow' : effect.block ? 'block' : 'require', requires,
-      ...(check.uses ? { uses: check.uses, tool: tools[rule.id] ?? 'not_run' } : {}),
+      ...(check.uses ? { uses: check.uses, tool: toolState } : {}),
       ...(check.when === 'manual' ? { question: check.question, answered: rule.id in answers } : {}),
     };
   });
+
+  if (mode === 'gate')
+    for (const ruleId of notRunTools)
+      hold({ code: 'tool_not_run', ruleId, text: `The check for "${applicable.find(r => r.id === ruleId)?.title}" was not run, so an engineer needs to look at this change.` }, true);
 
   // 5 · Verdict: the strictest result wins.
   const requiredRoles = [...new Set([...requiredBy.keys(), ...(engineerNeeded ? [engineerRole] : [])])].sort();
@@ -207,6 +217,7 @@ export function evaluate({
     outcomes,
     // Replay only: journeys an applicable rule needed that had no evidence. The verdict is "as far as the rules that could run".
     notRun: [...notRun].sort(),
+    notRunTools,
     declared: { outcomes: [...declaredOutcomes], changes: declaredParts, answered: Object.keys(answers) },
   };
 }

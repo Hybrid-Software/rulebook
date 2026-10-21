@@ -12,7 +12,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve, relative } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { readHybridFolder, evaluate, HybridFormatError, ENTRY_KINDS } from '../packages/rulebook/index.mjs';
+import { readHybridFolder, evaluate, HybridFormatError, ENTRY_KINDS, globToRegExp } from '../packages/rulebook/index.mjs';
 
 const args = process.argv.slice(2);
 const cmd = args.shift();
@@ -123,6 +123,7 @@ function printVerdict(v, map, files, label) {
     : c.req(`needs ${who(v) || 'an engineer'}`);
   console.log(`${c.b('verdict')} ${line}`);
   if (v.notRun?.length) console.log(c.dim(`        ${v.notRun.length} behavioural check${v.notRun.length === 1 ? '' : 's'} not run here: ${v.notRun.join(', ')}`));
+  if (v.notRunTools?.length) console.log(c.dim(`        ${v.notRunTools.length} tool check${v.notRunTools.length === 1 ? '' : 's'} not run here: ${v.notRunTools.map(x => x.replace(/^rule:/, '')).join(', ')}`));
 }
 
 function check() {
@@ -186,23 +187,35 @@ function init() {
   const cwd = process.cwd();
   const write = args.includes('--write');
   const dirName = '.hybrid';
-  const out = { map: { areas: [], limits: { areas: 3, files: 40 } }, rules: [] };
+  const out = { map: { areas: [], limits: { areas: 4, files: 40 } }, rules: [] };
   const seen = new Set();
-  const addRule = (id, { title, paths, not, effect, when = 'always', question, body, source, owner = 'role:engineer' }) => {
+  const addRule = (id, { title, paths, not, effect, when = 'always', question, uses, body, source, owner = 'role:engineer' }) => {
     if (seen.has(id)) return; seen.add(id);
-    out.rules.push({ id, title, paths, not, effect, when, question, body, source, owner });
+    out.rules.push({ id, title, paths, not, effect, when, question, uses, body, source, owner });
   };
   // 1 · areas from top-level folders that hold code
-  const SKIP = new Set(['node_modules', '.git', '.hybrid', 'dist', 'build', 'coverage', '.next', 'vendor', 'ios', 'android']);
+  const SKIP = new Set(['node_modules', '.git', '.hybrid', 'dist', 'build', 'coverage', '.next', 'vendor', 'ios', 'android', 'Pods']);
+  const files = listFiles(cwd);
   const top = readdirSync(cwd).filter(n => !SKIP.has(n) && !n.startsWith('.') && statSync(join(cwd, n)).isDirectory());
-  for (const n of top) out.map.areas.push({ id: `area:${n.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, title: n, paths: [`${n}/**`] });
+  const docAreas = [];
+  for (const n of top) {
+    const inside = files.filter(f => f.startsWith(n + '/'));
+    const code = inside.filter(f => CODE_EXT.test(f)).length, media = inside.filter(f => IMAGE_EXT.test(f)).length;
+    const id = `area:${n.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    if (!inside.length) continue;
+    if (code >= 3 && code >= media / 2) out.map.areas.push({ id, title: n, paths: [`${n}/**`] });
+    else docAreas.push(`${n}/**`);
+  }
+  if (existsSync(join(cwd, 'ios'))) out.map.areas.push({ id: 'area:native', title: 'Native build', paths: ['ios/**', 'android/**', 'app.json'] });
+  out.map.areas.push({ id: 'area:docs', title: 'Docs and media', weightless: true, paths: ['*.md', 'docs/**', ...docAreas] });
   // 2 · well-known dangerous paths → routing rules (drafts; owner to be confirmed)
   const known = [
     ['migrations-need-an-engineer', 'Database migrations need an engineer', ['**/migrations/**', '**/migrate/**', 'db/**', 'prisma/schema.prisma', 'supabase/**'], { require: ['role:engineer'] }],
     ['access-rules-need-an-engineer', 'Access and security rules need an engineer', ['firestore.rules', 'storage.rules', 'firestore.indexes.json', '**/policies/**', '**/iam/**', '**/auth/**'], { require: ['role:engineer'] }],
     ['billing-needs-an-owner', 'Billing, pricing and entitlements need their owner', ['**/billing/**', '**/stripe*', '**/payments/**', '**/pricing*', '**/entitlement*', '**/subscription*', '**/revenuecat*'], { require: ['role:engineer'] }],
     ['deploy-and-ci-need-an-engineer', 'Deploy scripts, CI and infrastructure need an engineer', ['.github/**', '**/deploy*', 'Dockerfile*', 'docker-compose*', 'infra/**', 'terraform/**', '*.toml', 'wrangler*', 'firebase.json', '.firebaserc', 'eas.json', 'vercel.json'], { require: ['role:engineer'] }],
-    ['dependencies-need-an-engineer', 'Dependency changes need an engineer', ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'composer.json', 'composer.lock', 'requirements*.txt', 'Gemfile*', 'go.mod', 'go.sum', 'Cargo.*'], { require: ['role:engineer'] }],
+    ['dependencies-need-an-engineer', 'Dependency changes need an engineer', ['**/package-lock.json', '**/pnpm-lock.yaml', '**/yarn.lock', '**/composer.lock', '**/requirements*.txt', '**/Gemfile.lock', '**/go.sum', '**/Cargo.lock', '**/poetry.lock'], { require: ['role:engineer'] }],
+    ['bank-and-payments-pipeline-needs-an-owner', 'The money pipeline (bank data, payouts, ledgers) needs its owner', ['**/plaid*', '**/bank*', '**/ledger*', '**/payout*', '**/transactions*'], { require: ['role:engineer'] }],
     ['data-repairs-need-a-dry-run', 'Scripts that touch production data need a dry-run and an owner', ['scripts/**backfill*', 'scripts/**repair*', 'scripts/**fix*', 'scripts/**sweep*', 'scripts/**migrate*'], { require: ['role:engineer'] }, 'manual', 'Was a dry-run against production attached, and does the script read state back rather than trusting a success response?'],
   ];
   for (const [id, title, paths, effect, when, question] of known) {
@@ -229,14 +242,20 @@ function init() {
   const prose = [];
   for (const f of ['CLAUDE.md', 'AGENTS.md', 'CONTRIBUTING.md', 'docs/CONTRIBUTING.md', '.github/PULL_REQUEST_TEMPLATE.md']) {
     if (!existsSync(join(cwd, f))) continue;
-    const text = readFileSync(join(cwd, f), 'utf8').replace(/```[\s\S]*?```/g, '');
-    for (const sentence of text.split(/(?<=[.!?])\s+|\n+/)) {
-      const t = sentence.replace(/^[-*#>\s]+/, '').trim();
-      if (t.length > 25 && t.length < 260 && OWNER_WORDS.test(t)) prose.push({ file: f, text: t });
+    const text = readFileSync(join(cwd, f), 'utf8').replace(/```[\s\S]*?```/g, '').replace(/^\|.*$/gm, '');
+    for (const para of text.split(/\n\s*\n/)) {
+      const joined = para.replace(/^[-*#>\s]+/gm, '').replace(/\s*\n\s*/g, ' ').replace(/\*\*/g, '').trim();
+      for (const sentence of joined.split(/(?<=[.!?])\s+(?=[A-Z`"'(])/)) {
+        const t = sentence.trim();
+        if (t.length > 30 && t.length < 300 && OWNER_WORDS.test(t)) {
+          const m = /(?:needs?|requires?|get|with)\s+([A-Z][a-z]+)(?:'s)?\s+(?:nod|sign[- ]?off|approval|ok|review|call)/i.exec(t);
+          prose.push({ file: f, text: t, owner: m ? `person:${m[1].toLowerCase()}` : null });
+        }
+      }
     }
   }
   // ---- output ----
-  const mapYaml = ['areas:', ...out.map.areas.map(a => `  - { id: ${a.id}, title: ${JSON.stringify(a.title)}, paths: ${JSON.stringify(a.paths)} }`), `limits: { areas: ${out.map.limits.areas}, files: ${out.map.limits.files} }`, 'defaults: { uncovered: require }', ''].join('\n');
+  const mapYaml = ['areas:', ...out.map.areas.map(a => `  - { id: ${a.id}, title: ${JSON.stringify(a.title)}, paths: ${JSON.stringify(a.paths)}${a.weightless ? ', weightless: true' : ''} }`), `limits: { areas: ${out.map.limits.areas}, files: ${out.map.limits.files} }`, 'defaults: { uncovered: require }', ''].join('\n');
   const ruleFiles = out.rules.map(r => [`rules/${r.id.slice(5)}.md`, [
     '---', `id: ${r.id}`, 'kind: rule', 'revision: v1', 'status: draft', `title: ${JSON.stringify(r.title)}`, `owner: ${r.owner}`, `asOf: ${new Date().toISOString().slice(0, 10)}`,
     `scope: { paths: ${JSON.stringify(r.paths)}${r.not ? `, not: ${JSON.stringify(r.not)}` : ''} }`,
@@ -248,7 +267,7 @@ function init() {
     for (const r of out.rules) console.log(`${c.dim('rule     ')} ${r.id.slice(5).padEnd(34)} ${c.req(r.effect.require ? `require ${r.effect.require.map(x => x.replace(/^(person|role):/, '')).join(', ')}` : r.effect.block ? 'block' : 'allow')}${r.when === 'manual' ? c.dim('  asks a question') : ''}  ${c.dim('from ' + r.source)}`);
     if (prose.length) {
       console.log(c.b(`\n${prose.length} sentences in your docs already read like rules. Say which are, and who owns each:`));
-      for (const p of prose.slice(0, 20)) console.log(`${c.dim(p.file.padEnd(14))} ${p.text}`);
+      for (const p of prose.slice(0, 20)) console.log(`${c.dim(p.file.padEnd(14))} ${p.owner ? c.req(`→ ${p.owner.slice(7)}  `) : ''}${p.text}`);
       if (prose.length > 20) console.log(c.dim(`… and ${prose.length - 20} more`));
     }
     console.log(c.dim('\nNothing ships alone until a rule says "allow" and someone approves it. Drafts do not count.'));
@@ -261,7 +280,30 @@ function init() {
   console.log(c.ok(`wrote ${dirName}/map.yaml, ${ruleFiles.length} draft rules${prose.length ? `, and DRAFT-RULES-FROM-DOCS.md (${prose.length} sentences)` : ''}`));
   console.log(c.dim('Next: set owners, change status to approved on the ones you mean, then `rulebook replay 30`.'));
 }
+const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py|rb|php|go|rs|java|kt|swift|vue|svelte|sql|rules|prisma|graphql|yaml|yml|json|toml|sh)$/i;
+const IMAGE_EXT = /\.(png|jpe?g|gif|svg|webp|mp4|mov|pdf|md|txt)$/i;
+let _files = null;
+function listFiles(cwd, limit = 20000) {
+  if (_files) return _files;
+  const out = [];
+  const walk = (d, rel, depth) => {
+    if (out.length > limit || depth > 6) return;
+    let names; try { names = readdirSync(d); } catch { return; }
+    for (const n of names) {
+      if (n === 'node_modules' || n === '.git' || n === 'dist' || n === 'build' || n === 'coverage' || n === '.next' || n === 'vendor' || n === 'Pods') continue;
+      const p = join(d, n), r = rel ? `${rel}/${n}` : n;
+      let st; try { st = statSync(p); } catch { continue; }
+      if (st.isDirectory()) walk(p, r, depth + 1); else out.push(r);
+    }
+  };
+  walk(cwd, '', 0);
+  return (_files = out);
+}
 function existsAny(cwd, glob) {
+  const re = globToRegExp(glob);
+  return listFiles(cwd).some(f => re.test(f));
+}
+function _unused(cwd, glob) {
   // cheap: check literal prefix directory or file existence
   const literal = glob.split('*')[0].replace(/\/$/, '');
   if (!literal) return false;
