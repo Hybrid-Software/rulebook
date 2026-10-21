@@ -1,0 +1,27 @@
+areas:
+  - id: area:checkout
+    title: Checkout
+    paths: ["web/src/checkout/**", "api/checkout/**"]
+journeys:
+  - id: journey:new-subscriber-checkout
+    title: A new subscriber checks out
+    flow: journeys/new-subscriber-checkout.spec.ts
+    account: new-subscriber
+    exercises: [area:checkout]
+    outcomes: [new_subscriber_total, checkout_completed]
+  - id: journey:existing-subscriber-checkout
+    title: An existing subscriber checks out
+    flow: journeys/existing-subscriber-checkout.spec.ts
+    account: existing-subscriber
+    exercises: [area:checkout]
+    outcomes: [existing_subscriber_total, checkout_completed]
+cases:
+  - id: case:new-subscriber-quote
+    title: Price quoted to a new subscriber
+    script: cases/new-subscriber-quote.mjs
+    exercises: [area:checkout]
+    outcomes: [new_subscriber_total]
+outcomes:
+  new_subscriber_total: { label: "New subscriber's total", format: money }
+  existing_subscriber_total: { label: "Existing subscriber's total", format: money }
+  checkout_completed: { label: "Checkout completed", format: yes_no }

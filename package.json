@@ -1,0 +1,13 @@
+{
+  "name": "@hybrid-software/rulebook",
+  "version": "0.1.0",
+  "description": "Rules you write once, with an owner on each, that decide which changes ship with nobody looking and who looks at the rest.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": { "rulebook": "./cli/rulebook.mjs" },
+  "exports": "./packages/rulebook/index.mjs",
+  "files": ["cli", "packages/rulebook", "README.md", "LICENSE", "docs"],
+  "scripts": { "test": "node --test 'packages/rulebook/test/*.test.mjs' 'cli/test/*.test.mjs'" },
+  "dependencies": { "yaml": "2.8.1" },
+  "engines": { "node": ">=20" }
+}
