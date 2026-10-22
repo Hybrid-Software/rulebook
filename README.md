@@ -1,22 +1,26 @@
-<p align="center"><img src="docs/assets/hybrid-rulebook.png" alt="Hybrid Rulebook" width="420"></p>
+<p align="center">
+  <img src="docs/assets/hybrid-rulebook.png" alt="Hybrid Rulebook" width="640">
+</p>
 
-<p align="center"><b>The enforcement layer for agentic work.</b></p>
+<h1 align="center">The enforcement layer for agentic work</h1>
 
 <p align="center">
   <a href="https://github.com/Hybrid-Software/rulebook/actions/workflows/test.yml"><img src="https://github.com/Hybrid-Software/rulebook/actions/workflows/test.yml/badge.svg" alt="tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache-2.0"></a>
   <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="node >= 20">
+  <a href="docs/FORMAT.md"><img src="https://img.shields.io/badge/docs-format-6f42c1.svg" alt="docs"></a>
+  <a href="https://hybridapp.io"><img src="https://img.shields.io/badge/hosted-hybridapp.io-0B6CFF.svg" alt="hybridapp.io"></a>
 </p>
 
-<p align="center">
+<h3 align="center">
   <a href="#your-instructions-become-rules">Quickstart</a> ·
   <a href="docs/FORMAT.md">Format</a> ·
   <a href="docs/ARCHITECTURE.md">Architecture</a> ·
   <a href="examples/">Examples</a> ·
   <a href="https://hybridapp.io">Hybrid</a>
-</p>
+</h3>
 
----
+<br>
 
 **Agents follow instructions until they don't.**
 
