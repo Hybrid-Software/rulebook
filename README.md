@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/hybrid-rulebook.png" alt="Hybrid Rulebook" width="640">
+  <img src="docs/assets/hybrid-rulebook.png" alt="Hybrid Rulebook" width="530">
 </p>
 
 <h1 align="center">The enforcement layer for agentic work</h1>
