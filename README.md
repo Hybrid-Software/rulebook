@@ -8,8 +8,6 @@
   <a href="https://github.com/Hybrid-Software/rulebook/actions/workflows/test.yml"><img src="https://github.com/Hybrid-Software/rulebook/actions/workflows/test.yml/badge.svg" alt="tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache-2.0"></a>
   <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="node >= 20">
-  <a href="docs/FORMAT.md"><img src="https://img.shields.io/badge/docs-format-6f42c1.svg" alt="docs"></a>
-  <a href="https://hybridapp.io"><img src="https://img.shields.io/badge/hosted-hybridapp.io-0B6CFF.svg" alt="hybridapp.io"></a>
 </p>
 
 <p align="center">
@@ -22,27 +20,19 @@
 
 <br>
 
-**Agents follow instructions until they don't.**
+Agents follow instructions until they don't. Rulebook turns the instructions that matter into rules, each with an owner, and checks every change your agents make against them.
 
-Today, agents can do anything and answer for nothing. At scale that's a liability with two bad options: review everything an agent does, or stop reviewing and hope.
-
-Rulebook is the third option. It turns the instructions that matter into rules, each with an owner, attached to the part of your product it protects, and checks every change against them.
-
-Think of it as a router.
-
-**Without Rulebook.** Every change goes to you. Your instructions are suggestions; you're the gate.
+**Work the rules cover goes through. Work they reserve goes to the person who owns the rule.**
 
 ```
-instructions → every change → YOU
+without    every change ───────────────▶ you
+
+with       every change ──▶ Rulebook ──┬──▶ ships
+                                       ├──▶ owner
+                                       └──▶ blocked
 ```
 
-**With Rulebook.** Your rules are enforced on every change. Work they cover goes through. Work they reserve goes to the person who owns the rule, with the evidence. Work that breaks them stops.
-
-```
-every change → Rulebook → ships · owner · blocked
-```
-
-Works with any agent (Claude Code, Codex, Cursor) and any author, human or not. Nothing leaves your machine; no account.
+---
 
 ## Your instructions become rules
 
