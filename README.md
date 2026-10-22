@@ -1,22 +1,42 @@
 <p align="center"><img src="docs/assets/hybrid-rulebook.png" alt="Hybrid Rulebook" width="420"></p>
 
-# Rulebook
+<p align="center"><b>The enforcement layer for agentic work.</b></p>
 
-**The enforcement layer for your agents. Most of what they do goes through. The things that need a yes get one from the person who owns the rule. You own the rules instead of reviewing the work.**
+<p align="center">
+  <a href="https://github.com/Hybrid-Software/rulebook/actions/workflows/test.yml"><img src="https://github.com/Hybrid-Software/rulebook/actions/workflows/test.yml/badge.svg" alt="tests"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache-2.0"></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="node >= 20">
+</p>
 
-You wrote instructions for your agents. You don't know if they're being followed, and the first you'll hear about it is when something's broken. So you either approve everything they do (and stop reading what you approve: people accept 93% of permission prompts) or you let them run and hope. A Rulebook is the third option: the instructions that matter, as rules with an owner, checked when the thing they govern is touched, enforced before anything ships or sends.
+<p align="center">
+  <a href="#your-instructions-become-rules">Quickstart</a> ·
+  <a href="docs/FORMAT.md">Format</a> ·
+  <a href="docs/ARCHITECTURE.md">Architecture</a> ·
+  <a href="examples/">Examples</a> ·
+  <a href="https://hybridapp.io">Hybrid</a>
+</p>
 
-Everything your agent does on its own, with the one condition you've been enforcing by hand:
+---
+
+**Agents follow instructions until they don't.**
+
+Today, agents can do anything and answer for nothing. At scale that's a liability with two bad options: review everything an agent does, or stop reviewing and hope.
+
+Rulebook is the third option. It turns the instructions that matter into rules, each with an owner, attached to the part of your product it protects, and checks every change against them.
+
+Think of it as a router.
+
+**Without Rulebook.** Every change goes to you. Your instructions are suggestions; you're the gate.
 
 ```
-merge     feat/fix-outage → main          needs Priya    production-changes-need-an-approver   (the fix that caused a 13-hour outage skipped exactly this)
-send      digest to 2,340 contacts         blocked        reach-is-capped-at-50                 (the digest bot that messaged the owner's wife and 500 strangers)
-run       delete volume prod-db            blocked        the agent never held the token        (the staging task that deleted a production database)
+instructions → every change → YOU
 ```
 
-Three famous incidents, three four-line rules. Each was an allowed action with a wrong outcome, and nobody had a way to say *yes, but only when*.
+**With Rulebook.** Your rules are enforced on every change. Work they cover goes through. Work they reserve goes to the person who owns the rule, with the evidence. Work that breaks them stops.
 
-Claude Code's permissions decide which commands an agent may run on your machine. A Rulebook decides what may change in your product, by anyone's agent, and who answers for it. **Instructions are a suggestion. Rules are governance.**
+```
+every change → Rulebook → ships · owner · blocked
+```
 
 Works with any agent (Claude Code, Codex, Cursor) and any author, human or not. Nothing leaves your machine; no account.
 
