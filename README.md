@@ -20,7 +20,7 @@
 
 <br>
 
-Agents follow instructions until they don't. Rulebook turns the instructions that matter into rules, each with an owner, and checks every change your agents make against them.
+Agents follow instructions until they don't. Rulebook turns the instructions that matter into rules, each with an owner, attached to the part of your product it protects, and checks every change against them.
 
 **Work the rules cover goes through. Work they reserve goes to the person who owns the rule.**
 
