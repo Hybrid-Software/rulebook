@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/assets/hybrid-rulebook.png" alt="Hybrid Rulebook" width="420"></p>
+
 # Rulebook
 
 **The enforcement layer for your agents. Most of what they do goes through. The things that need a yes get one from the person who owns the rule. You own the rules instead of reviewing the work.**
