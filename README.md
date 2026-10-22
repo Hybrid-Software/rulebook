@@ -1,20 +1,48 @@
 # Rulebook
 
-**A folder of rules in your repo, and a check that runs on every change your agents make: it ships, or it comes to you with the rule it hit and the evidence.**
+**The enforcement layer for your agents. Most of what they do goes through. The things that need a yes get one from the person who owns the rule. You own the rules instead of reviewing the work.**
 
-You wrote instructions for your agents. You don't know if they're being followed, and the first you'll hear about it is when something's broken. Rulebook turns the instructions that matter into rules that are enforced: each has an owner, is checked when the thing it governs is touched, and decides before anything ships.
+You wrote instructions for your agents. You don't know if they're being followed, and the first you'll hear about it is when something's broken. So you either approve everything they do (and stop reading what you approve: people accept 93% of permission prompts) or you let them run and hope. A Rulebook is the third option: the instructions that matter, as rules with an owner, checked when the thing they govern is touched, enforced before anything ships or sends.
+
+Everything your agent does on its own, with the one condition you've been enforcing by hand:
 
 ```
-PR #412   budget/spend.ts         blocked       figures-match-the-dashboard   "spend this month" 1,284 vs 1,412
-PR #418   notifications/send.ts   needs Lee     reach-is-lees-call            reach 12 → 2,340 members
-deploy    from feat/x             blocked       deploy-only-from-main         the token was never in the agent's hands
+merge     feat/fix-outage → main          needs Priya    production-changes-need-an-approver   (the fix that caused a 13-hour outage skipped exactly this)
+send      digest to 2,340 contacts         blocked        reach-is-capped-at-50                 (the digest bot that messaged the owner's wife and 500 strangers)
+run       delete volume prod-db            blocked        the agent never held the token        (the staging task that deleted a production database)
 ```
 
-A change, a notification's reach, an action: same rule shape, same owner, same verdict. Nothing above is specific to code. **Instructions are a suggestion. Rules are governance.**
+Three famous incidents, three four-line rules. Each was an allowed action with a wrong outcome, and nobody had a way to say *yes, but only when*.
+
+Claude Code's permissions decide which commands an agent may run on your machine. A Rulebook decides what may change in your product, by anyone's agent, and who answers for it. **Instructions are a suggestion. Rules are governance.**
 
 Works with any agent (Claude Code, Codex, Cursor) and any author, human or not. Nothing leaves your machine; no account.
 
-## How many of your last 30 merges didn't need you?
+## Your instructions become rules
+
+```
+$ npx @hybrid-software/rulebook init
+
+16 sentences in your CLAUDE.md already read like rules. Say which are, and who owns each:
+CLAUDE.md   → priya   Anything touching billing or a data repair over real records needs Priya's nod.
+CLAUDE.md             Never write to production from a script, a test, or a "quick fix".
+CLAUDE.md             A live payments key never exists outside production.
+…
+7 draft rules written to .hybrid/rules/. Nothing is enforced until you approve one.
+```
+
+Then the next change your agent makes meets them:
+
+```
+$ npx @hybrid-software/rulebook check --base main
+change   2 files · entities: billing
+rule     billing-needs-priya              require priya
+verdict  needs Priya — functions/stripe/webhooks.ts · evidence attached
+```
+
+And every agent on the team starts from them: `rulebook context entity:billing` at session start prints the constitution and everything attached to what the agent is about to touch. Same ids for what it was told and what it is judged by.
+
+## What would it have caught?
 
 ```
 npx @hybrid-software/rulebook init      # drafts entities and rules from your repo, CODEOWNERS, lint config and CLAUDE.md
@@ -54,7 +82,7 @@ effect:
 Right arithmetic over the wrong inputs looked fine in every code review for six weeks. The number is the check.
 ```
 
-Three effects: `allow` (ships with nobody looking), `require: [who]` (goes to that person, with the evidence), `block`. Four kinds of check: `always` (fires whenever the entity is touched), `manual` (asks the owner a question, on the card), `invariant` / `outcome_changed` (a measured figure, before and after), and `uses:` (runs the checks you already have: your tests, your lint, Semgrep). A rule can carry `scope.paths` so it exists before the map does.
+Three effects: `allow` (ships with nobody looking), `require: [who]` (goes to that person, with the evidence), `block`. Who answers for an agent's change? The owner of the rule it passed. That is what the `owner` field is for. Four kinds of check: `always` (fires whenever the entity is touched), `manual` (asks the owner a question, on the card), `invariant` / `outcome_changed` (a measured figure, before and after), and `uses:` (runs the checks you already have: your tests, your lint, Semgrep). A rule can carry `scope.paths` so it exists before the map does.
 
 ## For a company, not only a repo
 
