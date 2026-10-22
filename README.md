@@ -26,12 +26,14 @@ Each rule connects to a part of your business, has an owner, and fires whenever 
 
 **Work the rules cover goes through. Work they reserve goes to the person who owns the rule.**
 
-```
-without    every change ───────────────▶ you
+<p align="center"><img src="docs/assets/with-without-rulebook.png" alt="Without Rulebook, every task your agents do lands on you. With Rulebook, each task meets the rule for its part of the business: it ships, goes to the rule's owner, or stops." width="100%"></p>
 
-with       every change ──▶ Rulebook ──┬──▶ ships
-                                       ├──▶ owner
-                                       └──▶ blocked
+```
+$ rulebook check
+refund customer $40        ships         refunds-under-100
+fix button text            ships         copy-ships
+change Stripe webhook      needs Priya   billing-needs-priya
+email 2,340 customers      blocked       reach-at-most-50   (2,340 > 50)
 ```
 
 ---
