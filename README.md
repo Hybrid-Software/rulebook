@@ -1,27 +1,18 @@
 # Rulebook
 
-**Rules you write once, with an owner on each, that decide which changes ship with nobody looking and who looks at the rest.**
+**A folder of rules in your repo, and a check that runs on every change your agents make: it ships, or it comes to you with the rule it hit and the evidence.**
 
-Your agents have instructions. Nothing enforces them. You wrote a CLAUDE.md; you don't know if it was read, and nothing happens when it's ignored. A Rulebook is the part of those instructions that has to be true: each rule has an owner, is checked when the thing it governs is touched, and is enforced before anything ships.
+You wrote instructions for your agents. You don't know if they're being followed, and the first you'll hear about it is when something's broken. Rulebook turns the instructions that matter into rules that are enforced: each has an owner, is checked when the thing it governs is touched, and decides before anything ships.
 
 ```
-$ rulebook check --base main                   # an agent's PR: a timezone fix in the budget feature
-change   3 files · entities: budget
-rule     figures-match-the-dashboard    invariant   blocked
-         "spend this month" 1,284 on the Ask screen · 1,412 on the dashboard
-verdict  blocked — nobody has to read the code to know it's wrong
-
-$ rulebook check --base main                   # an agent adds an @everyone mention
-change   2 files · entities: notifications
-rule     reach-is-lees-call             outcome     reach 12 → 2,340 members
-verdict  needs Lee
-
-$ rulebook check --action deploy --from feat/x  # an agent tries to deploy a branch (the action gate: format today, proxy in the hosted product)
-rule     deploy-only-from-main          always      blocked
-verdict  blocked — the token was never in the agent's hands
+PR #412   budget/spend.ts         blocked       figures-match-the-dashboard   "spend this month" 1,284 vs 1,412
+PR #418   notifications/send.ts   needs Lee     reach-is-lees-call            reach 12 → 2,340 members
+deploy    from feat/x             blocked       deploy-only-from-main         the token was never in the agent's hands
 ```
 
-Same rule shape, same owner, same verdict: a change, a notification's reach, an action. Nothing above is specific to code. **Instructions are a suggestion. Rules are governance.**
+A change, a notification's reach, an action: same rule shape, same owner, same verdict. Nothing above is specific to code. **Instructions are a suggestion. Rules are governance.**
+
+Works with any agent (Claude Code, Codex, Cursor) and any author, human or not. Nothing leaves your machine; no account.
 
 ## How many of your last 30 merges didn't need you?
 
@@ -65,6 +56,10 @@ Right arithmetic over the wrong inputs looked fine in every code review for six 
 
 Three effects: `allow` (ships with nobody looking), `require: [who]` (goes to that person, with the evidence), `block`. Four kinds of check: `always` (fires whenever the entity is touched), `manual` (asks the owner a question, on the card), `invariant` / `outcome_changed` (a measured figure, before and after), and `uses:` (runs the checks you already have: your tests, your lint, Semgrep). A rule can carry `scope.paths` so it exists before the map does.
 
+## For a company, not only a repo
+
+The Rulebook doesn't store your data. It writes down the rules and judgment that live in people's heads, what the things in your business are, what was decided about them, and what has to stay true, so your agents operate under the same guardrails your employees do. Every agent reads one record; every change, a PR, a pricing decision, an email about to go out, is checked against the same rules with the same owners. Where a number lives, the record points; it never copies. Start from one rule, not a model of everything: `examples/company` is a whole company in eleven files.
+
 ## Where rules come from
 
 Nobody writes them from a blank page. `init` reads your repo's layout, CODEOWNERS, lint config and the sentences in CLAUDE.md that already read like rules ("anything touching billing needs Maya's nod" becomes a rule with `owner: person:maya`). You confirm or delete. The rest come out of the record over time: a change that reached a person because no rule covered it is a rule request with the evidence attached.
@@ -95,7 +90,7 @@ You still want a memory store, and the Rulebook points at it. This is the layer 
 2. **A team's agents, all reading one record.** Every agent starts from the same constitution, the same rules, the same decisions and corrections. A decision one founder made is a rule the other founder's agent hits. `examples/company`: a fictional company's Rulebook, where a draft pricing decision routes to both founders and a copy change runs the roaster-confirmation check.
 3. **Agents changing their own work.** An agent that proposes a change to its own prompts or harness is a third author at the same gate. Agent-initiated changes route until the rule earns `allow`; no change to a harness may lower a held-out eval.
 
-The same evaluator extends to actions (deploy, send, publish): a proposed action instead of a diff, the same rules, a proxy that holds the token so the agent only ever asks. The format carries it today; the proxy ships with the hosted product.
+The same evaluator extends to actions (deploy, send, publish): a proposed action instead of a diff, the same rules, a proxy that holds the token so the agent only ever asks. The format carries it today; the proxy that holds the token ships with the hosted product.
 
 ## Commands
 
