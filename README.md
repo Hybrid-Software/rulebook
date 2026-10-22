@@ -2,7 +2,7 @@
   <img src="docs/assets/hybrid-rulebook.png" alt="Hybrid Rulebook" width="530">
 </p>
 
-<h2 align="center">The enforcement layer for agentic work</h2>
+<h2 align="center">The accountability layer for agentic work</h2>
 
 <p align="center">
   <a href="https://github.com/Hybrid-Software/rulebook/actions/workflows/test.yml"><img src="https://github.com/Hybrid-Software/rulebook/actions/workflows/test.yml/badge.svg" alt="tests"></a>
