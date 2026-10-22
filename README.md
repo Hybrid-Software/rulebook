@@ -20,7 +20,7 @@
 
 <br>
 
-Agents follow instructions until they *don't*. Rulebook turns the ones that matter into rules your agents can't *skip*.
+Agents follow instructions until *they don't*. Rulebook turns the ones that matter into rules your agents *can't skip*.
 
 Each rule connects to a part of your business, has an owner, and fires whenever a change touches that part.
 
