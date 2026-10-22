@@ -12,13 +12,13 @@
   <a href="https://hybridapp.io"><img src="https://img.shields.io/badge/hosted-hybridapp.io-0B6CFF.svg" alt="hybridapp.io"></a>
 </p>
 
-<h3 align="center">
+<p align="center">
   <a href="#your-instructions-become-rules">Quickstart</a> ·
   <a href="docs/FORMAT.md">Format</a> ·
   <a href="docs/ARCHITECTURE.md">Architecture</a> ·
   <a href="examples/">Examples</a> ·
   <a href="https://hybridapp.io">Hybrid</a>
-</h3>
+</p>
 
 <br>
 
