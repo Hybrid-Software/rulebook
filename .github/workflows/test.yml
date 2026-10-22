@@ -1,0 +1,24 @@
+name: test
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm ci
+      - run: npm test
+      - run: node cli/rulebook.mjs validate --dir examples/company/rulebook
+      - run: node cli/rulebook.mjs validate --dir examples/subscriptions/.hybrid
+  blocklist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No customer or company-internal content in the public repo
+        run: |
+          set -e
+          PATTERNS='\b(dollarfi|dollar fi|fi[- ]couple|startup ?science|chatlpo|lightsprint|refinar|ten[- ]?studios|ten ?k ?ventures|tenos|hybrid-internal|saxena|kakarla|josh)\b'
+          if git grep -niE "$PATTERNS" -- . ':!.github/workflows/test.yml'; then
+            echo "::error::customer or company-internal names found in the public repo"; exit 1
+          fi

@@ -27,13 +27,13 @@ export const matchesAny = (globs, file) => matcher(globs)(clean(file));
  * Which areas a set of changed files touches, and which journeys and cases run through those areas.
  * A file under `.hybrid/` is listed in `hybridFiles` and never counts as unmapped.
  */
-export function footprint(map, changedFiles) {
+export function footprint(map, changedFiles, touched_ = []) {
   const files = [...new Set((changedFiles ?? []).map(clean))].sort();
   const areaMatchers = map.areas.map(area => {
     const yes = matcher(area.paths), no = matcher(area.not ?? []);
     return { id: area.id, matches: file => yes(file) && !no(file) };
   });
-  const touched = new Set();
+  const touched = new Set(touched_);
   const unmapped = [], hybridFiles = [], weightlessFiles = [];
   const weightless = new Set(map.areas.filter(a => a.weightless).map(a => a.id));
   for (const file of files) {
@@ -41,10 +41,11 @@ export function footprint(map, changedFiles) {
     hits.forEach(area => touched.add(area.id));
     if (hits.length && hits.every(area => weightless.has(area.id))) weightlessFiles.push(file);
     if (file === '.hybrid' || file.startsWith('.hybrid/')) hybridFiles.push(file);
-    else if (!hits.length) unmapped.push(file);
+    else if (!hits.length && !touched_.length) unmapped.push(file);
+    else if (!hits.length && !/\/(rules|entities|decisions|definitions|sources)\/|constitution\.md$/.test(file)) unmapped.push(file);
   }
   return {
-    areas: map.areas.map(area => area.id).filter(id => touched.has(id)),
+    areas: [...map.areas.map(area => area.id).filter(id => touched.has(id)), ...[...touched].filter(id => !map.areas.some(a => a.id === id)).sort()],
     journeys: [...map.journeys, ...map.cases].filter(journey => journey.exercises.some(id => touched.has(id))),
     unmapped,
     hybridFiles,
@@ -79,8 +80,8 @@ export function namedResults(rule) {
  *   measured, whether or not the journey that reports its result lists a touched area.
  * - `unmeasured`: results an applicable rule names that no journey or case in the map declares at all.
  */
-export function checksFor({ map, rules = [], changedFiles = [] }) {
-  const fp = footprint(map, changedFiles);
+export function checksFor({ map, rules = [], changedFiles = [], touched: extraTouched = [] }) {
+  const fp = footprint(map, changedFiles, extraTouched);
   const inFootprint = new Set([...fp.areas, ...fp.journeys.map(journey => journey.id)]);
   const byId = (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : String(a.revision) < String(b.revision) ? -1 : String(a.revision) > String(b.revision) ? 1 : 0);
   const applicable = rules

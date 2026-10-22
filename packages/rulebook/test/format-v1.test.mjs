@@ -97,3 +97,17 @@ journeys:
   assert.equal(v.result, 'allow');
   assert.deepEqual(v.notRun, ['journey:home']);
 });
+
+test('an entity with paths is an area: rules attach to it and a change touches it', () => {
+  const { map: m, rules: r } = parseHybridFiles({ 'map.yaml': 'areas: []\n',
+    'entities/billing.md': header({ id: 'entity:billing', kind: 'entity', revision: 'v1', status: 'approved', title: 'Billing', owner: 'person:maya', ratifiedBy: 'person:maya', ratifiedAt: '2026-10-20', asOf: '2026-10-20', scope: { paths: ['api/billing/**'] }, same_as: ['stripe:acct_1'] }),
+    'entities/docs.md': header({ id: 'entity:docs', kind: 'entity', revision: 'v1', status: 'approved', title: 'Docs', owner: 'person:maya', ratifiedBy: 'person:maya', ratifiedAt: '2026-10-20', asOf: '2026-10-20', scope: { paths: ['docs/**'] }, weightless: true }),
+    'rules/billing.md': approvedRule('billing-needs-maya', { applies_to: ['entity:billing'], check: { when: 'always' }, effect: { require: ['person:maya'] } }),
+    'rules/docs.md': approvedRule('docs-ship', { applies_to: ['entity:docs'], check: { when: 'always' }, effect: { allow: true } }) });
+  assert.ok(m.areas.some(a => a.id === 'entity:billing' && a.entity));
+  assert.ok(m.areas.find(a => a.id === 'entity:docs').weightless);
+  const v = evaluate({ version, changedFiles: ['api/billing/stripe.ts', 'docs/x.md'], map: m, rules: r });
+  assert.deepEqual(v.footprint.areas, ['entity:billing', 'entity:docs']);
+  assert.deepEqual(v.outstandingRoles, ['person:maya']);
+  assert.throws(() => parseHybridFiles({ 'map.yaml': 'areas: []\n', 'rules/x.md': approvedRule('x', { applies_to: ['entity:nope'], check: { when: 'always' }, effect: { allow: true } }) }), HybridFormatError);
+});

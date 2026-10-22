@@ -32,8 +32,9 @@ function best(candidates) {
 export function evaluate({
   version, changedFiles = [], map, rules = [], evidence = [], approvals = [],
   journeyVersions, seedVersion, mode = 'gate', engineerRole = 'role:engineer',
-  declares = {}, tools = {},
+  declares = {}, tools = {}, touched = [],
 }) {
+  // `touched`: entity ids the change touches that paths cannot find (a decision's applies_to, an action's target).
   // `tools` maps a rule id to the result of its check.uses command: 'pass' | 'fail' | 'not_run'.
   if (!['gate', 'preview', 'replay'].includes(mode)) throw new TypeError('mode must be "gate", "preview" or "replay"');
   // `declares` is what the change says about itself: { outcomes: [names it moves on purpose], changes: [parts of a bundle], answers: { ruleId: text } }.
@@ -45,7 +46,7 @@ export function evaluate({
   // 1 · Footprint, and 2 · applicable rules: approved rules that are organisation-wide or apply to something
   // in the footprint. A rule that applies is always measured, so the journeys to look at are those through
   // the touched areas plus any other that reports a result an applicable rule names.
-  const checks = checksFor({ map, rules, changedFiles });
+  const checks = checksFor({ map, rules, changedFiles, touched });
   const { footprint: fp, applicable } = checks;
 
   // 3 · Evidence for each footprint journey, Before and After, and the built-in holds.
@@ -57,7 +58,7 @@ export function evaluate({
   const hold = (reason, needsEngineer, kind) => { holds.push({ ...reason, needsEngineer }); if (needsEngineer) engineerNeeded = true; if (kind === 'split') splitNeeded = true; };
   for (const file of fp.unmapped)
     hold({ code: 'unmapped_file', file, text: `The file ${file} is not part of any area on the map, so an engineer needs to look at this change.` }, true);
-  for (const file of fp.hybridFiles)
+  for (const file of (touched.length ? [] : fp.hybridFiles))
     hold({ code: 'hybrid_file_changed', file, text: `This change edits ${file}, which is part of the product's Hybrid setup, so an engineer needs to look at it.` }, true);
 
   // An area ships alone only when an approved rule with "allow" covers it. Uncovered areas go to an engineer,
@@ -69,6 +70,7 @@ export function evaluate({
     : [];
   for (const id of uncovered)
     hold({ code: 'area_uncovered', areaId: id, text: `No rule says changes to ${areaTitle(map, id)} can ship on their own, so an engineer needs to look at this change.` }, true);
+  // hybrid files: when the change IS the record (touched entities given), edits to the record are the change, not a hold.
 
   // Too much in one change: hold until the parts are declared.
   const limits = map.limits ?? {};

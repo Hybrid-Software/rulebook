@@ -264,16 +264,16 @@ export function parseEntry(text, file) {
   const ratified = (field, value) => (status === 'draft' ? optStr(file, field, value) : str(file, field, value));
   const people = (field, value) => (Array.isArray(value) ? textList(file, field, value) : present(value) ? [str(file, field, value)] : []);
   let check = null, effect = null, scope = null;
+  if (present(y.scope) && (kind === 'rule' || kind === 'entity')) {
+    const sc = item(file, 'scope', y.scope);
+    scope = { paths: textList(file, 'scope.paths', sc.paths), not: textList(file, 'scope.not', sc.not) };
+    if (!scope.paths.length) fail(file, 'scope.paths', 'must list at least one path when scope is given');
+  } else if (present(y.scope)) fail(file, 'scope', `is only for rules and entities; a ${kind} cannot have one`);
   if (kind === 'rule') {
     check = parseCheck(file, y.check);
     effect = parseEffect(file, y.effect);
-    if (present(y.scope)) {
-      const sc = item(file, 'scope', y.scope);
-      scope = { paths: textList(file, 'scope.paths', sc.paths), not: textList(file, 'scope.not', sc.not) };
-      if (!scope.paths.length) fail(file, 'scope.paths', 'must list at least one path when scope is given');
-    }
   } else {
-    for (const field of ['check', 'effect', 'scope'])
+    for (const field of ['check', 'effect'])
       if (present(y[field])) fail(file, field, `is only for rules; a ${kind} cannot have one`);
   }
   let corrects = null;
@@ -302,6 +302,8 @@ export function parseEntry(text, file) {
     corrects, standing,
     type: optStr(file, 'type', y.type),
     state: optStr(file, 'state', y.state),
+    weightless: flag(file, 'weightless', y.weightless),
+    sameAs: textList(file, 'same_as', Array.isArray(y.same_as) ? y.same_as : present(y.same_as) ? [y.same_as] : []),
     scope, check, effect, file,
   };
 }
@@ -321,7 +323,12 @@ export function parseHybridFiles(files) {
   const ENTRY_DIRS = /^(rules|definitions|decisions|entities)\/[^/]+\.md$/;
   const rules = [...texts.keys()].filter(path => ENTRY_DIRS.test(path) || path === 'constitution.md').sort()
     .map(path => parseEntry(texts.get(path), path));
-  // A rule with its own scope.paths defines a virtual area, so rules can exist before the map does.
+  // An entity with paths is an area: the thing rules attach to and a change can touch. map.yaml areas are
+  // the short form of the same thing. A rule with its own scope.paths defines one too, so rules can exist first.
+  for (const e of rules) {
+    if (e.kind !== 'entity' || !e.scope) continue;
+    map.areas.push({ id: e.id, title: e.title, paths: e.scope.paths, not: e.scope.not, weightless: e.weightless === true, entity: true });
+  }
   for (const rule of rules) {
     if (rule.kind !== 'rule' || !rule.scope) continue;
     const id = `area:${rule.id.slice(5)}`;
@@ -336,10 +343,13 @@ export function parseHybridFiles(files) {
     approved.set(rule.id, rule.file);
   }
   const mapIds = new Set([...map.areas, ...map.journeys, ...map.cases].map(entry => entry.id));
+  const entityIds = new Set(rules.filter(e => e.kind === 'entity').map(e => e.id));
   for (const rule of rules)
     for (const target of rule.appliesTo)
       if (rule.kind === 'rule' && /^(area|journey|case):/.test(target) && !mapIds.has(target))
         fail(rule.file, 'applies_to', `names ${show(target)}, which is not an area, journey or case in map.yaml`);
+      else if (rule.kind === 'rule' && target.startsWith('entity:') && !entityIds.has(target) && !mapIds.has(target))
+        fail(rule.file, 'applies_to', `names ${show(target)}, which is not an entity in this folder`);
   const accountIds = new Set((recipe?.accounts ?? []).map(a => a.id));
   map.journeys.forEach((journey, i) => {
     if (journey.account && !accountIds.has(journey.account))

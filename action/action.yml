@@ -1,0 +1,18 @@
+name: Rulebook check
+description: Run `rulebook check` on a pull request and post the verdict as a status.
+inputs:
+  dir:
+    description: The Rulebook folder
+    default: .hybrid
+  base:
+    description: Base ref to diff against
+    default: ${{ github.base_ref }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with: { node-version: '22' }
+    - shell: bash
+      run: |
+        git fetch --no-tags --depth=200 origin "${{ inputs.base }}"
+        npx --yes @hybrid-software/rulebook check --dir "${{ inputs.dir }}" --base "origin/${{ inputs.base }}"

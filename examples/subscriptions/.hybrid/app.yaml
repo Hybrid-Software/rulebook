@@ -1,0 +1,37 @@
+# Made-up product. Nothing here refers to a real app.
+product: demo-checkout
+prepare:
+  - npm ci
+start:
+  - name: api
+    run: npm run api
+    port_env: API_PORT
+    ready: /health
+    called_from_browser: true
+    address_env: PUBLIC_API_URL
+  - name: web
+    run: npm run web
+    port_env: WEB_PORT
+    preview: true
+env:
+  PAYMENTS_MODE: test
+  PAYMENTS_KEY: secret:payments_test_key
+test_data:
+  seed_version: 3
+  load: npm run seed
+  reset: npm run seed:reset
+accounts:
+  - id: new-subscriber
+    shows: No plan yet; sees the introductory discount
+    login: { email: new@test.example, password: secret:new_subscriber_password }
+  - id: existing-subscriber
+    shows: On a contracted price
+    login: { email: existing@test.example, password: secret:existing_subscriber_password }
+sign_in:
+  path: /login
+  email_field: "input[name=email]"
+  password_field: "input[name=password]"
+  submit: "button[type=submit]"
+paths:
+  screens_only: ["web/src/**"]
+  backend: ["api/**", "db/**", "package.json", "package-lock.json"]

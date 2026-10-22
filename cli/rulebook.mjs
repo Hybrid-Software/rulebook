@@ -12,7 +12,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve, relative } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { readHybridFolder, evaluate, HybridFormatError, ENTRY_KINDS, globToRegExp } from '../packages/rulebook/index.mjs';
+import { readHybridFolder, evaluate, HybridFormatError, ENTRY_KINDS, globToRegExp, parseEntry } from '../packages/rulebook/index.mjs';
 
 const args = process.argv.slice(2);
 const cmd = args.shift();
@@ -75,11 +75,12 @@ function validate() {
     }
   }
   const counts = Object.fromEntries(ENTRY_KINDS.map(k => [k, entries.filter(e => e.kind === k).length]).filter(([, n]) => n));
+  const plural = (k, n) => n === 1 ? k : k === 'entity' ? 'entities' : `${k}s`;
   if (json) { console.log(JSON.stringify({ dir, counts, sources: sourceIds.size, errors, warnings }, null, 2)); }
   else {
     for (const w of warnings) console.log(c.dim('warn  ') + w);
     for (const e of errors) console.log(c.bad('ERROR ') + e);
-    console.log(`\n${entries.length} entries (${Object.entries(counts).map(([k, n]) => `${n} ${k}${n === 1 ? '' : 's'}`).join(', ')}), ${map.areas.length} areas, ${sourceIds.size} sources; ${errors.length} errors, ${warnings.length} warnings${flag('write-index') ? '; indexes written' : ''}`);
+    console.log(`\n${entries.length} entries (${Object.entries(counts).map(([k, n]) => `${n} ${plural(k, n)}`).join(', ')}), ${map.areas.length} areas, ${sourceIds.size} sources; ${errors.length} errors, ${warnings.length} warnings${flag('write-index') ? '; indexes written' : ''}`);
   }
   process.exit(errors.length ? 1 : 0);
 }
@@ -126,6 +127,19 @@ function printVerdict(v, map, files, label) {
   if (v.notRunTools?.length) console.log(c.dim(`        ${v.notRunTools.length} tool check${v.notRunTools.length === 1 ? '' : 's'} not run here: ${v.notRunTools.map(x => x.replace(/^rule:/, '')).join(', ')}`));
 }
 
+/** Changed files that are entries in the record touch the entities their applies_to names. */
+function touchedByEntries(cwd, files) {
+  const touched = new Set();
+  for (const f of files) {
+    if (!/\.md$/.test(f) || !/(rules|entities|decisions|definitions)\/|constitution\.md$/.test(f)) continue;
+    try {
+      const e = parseEntry(readFileSync(join(cwd, f), 'utf8'), f);
+      for (const id of e.appliesTo) touched.add(id);
+      if (e.kind === 'entity') touched.add(e.id);
+    } catch { /* not an entry; fall through to path matching */ }
+  }
+  return [...touched];
+}
 function check() {
   const dir = findDir();
   const cwd = resolve(dir, '..');
@@ -135,8 +149,9 @@ function check() {
   const declares = typeof flag('declares') === 'string' ? JSON.parse(flag('declares')) : {};
   const tools = runTools(rules, cwd);
   const version = { id: `version:${git('rev-parse', '--short', 'HEAD') || 'working'}`, baseTree: 'tree:base', headTree: 'tree:head' };
-  const v = evaluate({ version, changedFiles: files, map, rules, mode: 'replay', declares, tools });
-  if (json) console.log(JSON.stringify({ files, verdict: v }, null, 2));
+  const touched = touchedByEntries(cwd, files);
+  const v = evaluate({ version, changedFiles: files, map, rules, mode: 'replay', declares, tools, touched });
+  if (json) console.log(JSON.stringify({ files, touched, verdict: v }, null, 2));
   else printVerdict(v, map, files, typeof flag('base') === 'string' ? `--base ${flag('base')}` : '');
   process.exit(v.result === 'block' ? 1 : 0);
 }
@@ -154,7 +169,7 @@ function replay() {
   for (const sha of commits) {
     const files = git('-C', cwd, 'diff', '--name-only', `${sha}^1`, sha).split('\n').filter(Boolean);
     const subject = git('-C', cwd, 'log', '-1', '--format=%s', sha);
-    const v = evaluate({ version: { id: `version:${sha.slice(0, 7)}`, baseTree: 'tree:base', headTree: 'tree:head' }, changedFiles: files, map, rules, mode: 'replay' });
+    const v = evaluate({ version: { id: `version:${sha.slice(0, 7)}`, baseTree: 'tree:base', headTree: 'tree:head' }, changedFiles: files, map, rules, mode: 'replay', touched: touchedByEntries(cwd, files) });
     rows.push({ sha: sha.slice(0, 7), subject, files: files.length, result: v.result, who: who(v), areas: v.footprint.areas, notRun: v.notRun, uncovered: v.reasons.some(r => r.code === 'area_uncovered'), unmapped: v.footprint.unmapped.length });
   }
   const ship = rows.filter(r => r.result === 'allow'), split = rows.filter(r => r.result === 'split'), block = rows.filter(r => r.result === 'block');
