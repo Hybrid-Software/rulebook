@@ -20,21 +20,19 @@
 
 <br>
 
-Agents follow instructions until *they don't*. Rulebook turns the ones that matter into rules your agents *can't skip*.
+Agents follow instructions until *they don't*.
 
-Each rule connects to a part of your business, has an owner, and fires whenever a change touches that part.
+Today, agents can do anything but have no accountability when they're wrong. At scale that's a liability: either review everything an agent does, or stop reviewing and hope nothing goes wrong.
 
-**Work the rules cover goes through. Work they reserve goes to the person who owns the rule.**
+Rulebook turns the instructions that matter into rules your agents *can't skip*. Each rule connects to a part of your business, has an owner, and fires whenever a change touches that part.
+
+<br>
 
 <p align="center"><img src="docs/assets/with-without-rulebook.png" alt="Without Rulebook, every task your agents do lands on you. With Rulebook, each task meets the rule for its part of the business: it ships, goes to the rule's owner, or stops." width="100%"></p>
 
-```
-$ rulebook check
-refund customer $40        ships         refunds-under-100
-fix button text            ships         copy-ships
-change Stripe webhook      needs Priya   billing-needs-priya
-email 2,340 customers      blocked       reach-at-most-50   (2,340 > 50)
-```
+**Without Rulebook**, every change goes to you for review. Your instructions are suggestions, and you remain the final gate.
+
+**With Rulebook**, your rules are verified and enforced on every change. Work they cover is approved, work they reserve goes to the rule's owner, and work that breaks a rule is blocked. You only see what needs you.
 
 ---
 
