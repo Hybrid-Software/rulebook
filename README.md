@@ -20,11 +20,9 @@
 
 <br>
 
-Agents follow instructions until *they don't*.
+Agents are increasingly capable, but take no accountability for what they do. As you give them more work, that leaves you two bad options: review everything they produce, or stop looking and hope nothing goes wrong.
 
-Today, agents can do *anything*, but have no *accountability* when they're wrong. At scale, that's a liability with two bad options: either you review everything an agent does, or you stop reviewing and hope nothing goes wrong.
-
-Rulebook solves this by turning the instructions that matter into rules your agents *can't skip*. Each rule connects to a part of your business, has an owner, and fires whenever a change touches that part.
+Rulebook turns the instructions that matter into rules your agents *can't skip*. Each rule connects to a part of your business, names the person accountable for it, and runs whenever a change touches that part.
 
 <br>
 
