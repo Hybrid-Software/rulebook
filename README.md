@@ -20,7 +20,7 @@
 
 <br>
 
-Agents are increasingly capable, but take no accountability for what they do. As you give them more work, that leaves you two bad options: review everything they produce, or stop looking and hope nothing goes wrong.
+Agents are increasingly _capable_, but take no _accountability_ for what they do. As you give them more work, that leaves you two bad options: review everything they produce, or stop looking and hope nothing goes wrong.
 
 Rulebook turns the instructions that matter into rules your agents *can't skip*. Each rule connects to a part of your business, names the person accountable for it, and runs whenever a change touches that part.
 
